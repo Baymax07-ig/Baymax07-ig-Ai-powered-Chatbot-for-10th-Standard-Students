@@ -1,0 +1,279 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EduBot - Class 10 Learning Assistant</title>
+
+    <!-- Flask CSS Connection -->
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- HEADER -->
+        <header class="top-header">
+
+            <div class="header-left">
+                <div class="logo-icon">E</div>
+
+                <div>
+                    <h2>EduBot</h2>
+                    <p>Educational Assistant</p>
+                </div>
+            </div>
+
+            <div class="status">
+                <span class="status-dot"></span>
+                AI Assistant Online
+            </div>
+
+        </header>
+
+
+        <!-- MAIN CHAT AREA -->
+        <main class="chat-content" id="chat-content">
+
+            <!-- WELCOME SECTION -->
+            <section class="welcome-section" id="welcome-section">
+
+                <div class="bot-avatar">✦</div>
+
+                <div class="welcome-label">
+                    YOUR PERSONAL LEARNING ASSISTANT
+                </div>
+
+                <h1>Hello, Student! 👋</h1>
+
+                <p class="welcome-description">
+                    Welcome to EduBot. I'm here to make learning easier.
+                    Ask me anything about your Kerala Class 10 textbooks
+                    and get simple, easy-to-understand explanations.
+                </p>
+
+            </section>
+
+
+            <!-- SUGGESTIONS -->
+            <section class="study-section" id="suggestions">
+
+                <h2>How can I help you?</h2>
+
+                <div class="suggestion-list">
+
+                    <button class="suggestion" type="button"
+                            data-question="Explain a difficult textbook topic in simple words.">
+                        <span>📖</span>
+                        Explain a textbook topic
+                    </button>
+
+                    <button class="suggestion" type="button"
+                            data-question="Give me a simple explanation of an important concept.">
+                        <span>💡</span>
+                        Simple explanations
+                    </button>
+
+                    <button class="suggestion" type="button"
+                            data-question="Help me prepare for my Class 10 examination.">
+                        <span>✍️</span>
+                        Exam preparation
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- CHAT MESSAGES -->
+            <section class="conversation" id="conversation"
+                     aria-live="polite">
+
+            </section>
+
+        </main>
+
+
+        <!-- CHAT INPUT -->
+        <footer class="chat-footer">
+
+            <form id="chat-form" class="chat-form">
+
+                <div class="input-container">
+
+                    <input
+                        type="text"
+                        id="msg"
+                        name="msg"
+                        placeholder="Ask anything about your textbooks..."
+                        autocomplete="off"
+                        required
+                    >
+
+                    <button type="submit"
+                            class="send-button"
+                            id="send-button"
+                            aria-label="Send message">
+                        ➤
+                    </button>
+
+                </div>
+
+            </form>
+
+            <p class="footer-note">
+                EduBot provides textbook-based answers to support your learning.
+            </p>
+
+        </footer>
+
+    </div>
+
+
+    <!-- JAVASCRIPT -->
+    <script>
+
+        const chatForm = document.getElementById("chat-form");
+        const messageInput = document.getElementById("msg");
+        const conversation = document.getElementById("conversation");
+        const sendButton = document.getElementById("send-button");
+
+        const welcomeSection = document.getElementById("welcome-section");
+        const suggestions = document.getElementById("suggestions");
+
+
+        // Display message in chat
+        function addMessage(message, sender) {
+
+            const messageDiv = document.createElement("div");
+
+            messageDiv.className = "message " + sender;
+
+            const avatar = document.createElement("div");
+            avatar.className = "message-avatar";
+
+            avatar.textContent = sender === "user-message" ? "S" : "✦";
+
+            const content = document.createElement("div");
+            content.className = "message-content";
+
+            const label = document.createElement("span");
+            label.className = "message-label";
+
+            label.textContent = sender === "user-message" ? "YOU" : "EDUBOT";
+
+            const text = document.createElement("p");
+            text.textContent = message;
+
+            content.appendChild(label);
+            content.appendChild(text);
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+
+            conversation.appendChild(messageDiv);
+
+            messageDiv.scrollIntoView({
+                behavior: "smooth",
+                block: "end"
+            });
+
+            return text;
+        }
+
+
+        // Send message to Flask backend
+        async function sendMessage(question) {
+
+            if (!question.trim()) {
+                return;
+            }
+
+            welcomeSection.style.display = "none";
+            suggestions.style.display = "none";
+
+            addMessage(question, "user-message");
+
+            messageInput.value = "";
+            sendButton.disabled = true;
+
+            const loadingText = addMessage(
+                "Thinking... Please wait.",
+                "bot-message"
+            );
+
+            try {
+
+                const formData = new FormData();
+
+                // Flask expects the field name 'msg'
+                formData.append("msg", question);
+
+                // Send POST request to Flask /get route
+                const response = await fetch("/get", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error("Server error: " + response.status);
+                }
+
+                const answer = await response.text();
+
+                loadingText.textContent = answer;
+
+            } catch (error) {
+
+                loadingText.textContent =
+                    "Sorry, something went wrong. Please try again.";
+
+                console.error("Chat error:", error);
+
+            } finally {
+
+                sendButton.disabled = false;
+                messageInput.focus();
+
+            }
+
+        }
+
+
+        // Form submission
+        chatForm.addEventListener("submit", function(event) {
+
+            event.preventDefault();
+
+            const question = messageInput.value.trim();
+
+            sendMessage(question);
+
+        });
+
+
+        // Suggestion button clicks
+        document.querySelectorAll(".suggestion").forEach(button => {
+
+            button.addEventListener("click", function() {
+
+                const question = this.dataset.question;
+
+                sendMessage(question);
+
+            });
+
+        });
+
+    </script>
+
+</body>
+</html>
